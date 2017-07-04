@@ -151,7 +151,7 @@ func SendPushNotifications(messages []*PushMessage) (*PushNotificationResponse, 
 
 	var response PushNotificationResponse
 	err = json.Unmarshal(result, &response)
-	return &response, nil
+	return &response, err
 }
 
 // ChunkPushNotifications returns an array of chunks
