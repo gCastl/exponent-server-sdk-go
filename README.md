@@ -1,5 +1,6 @@
 # exponent-server-sdk-go
 [![Build Status](https://travis-ci.org/Terminux/exponent-server-sdk-go.svg?branch=master)](https://travis-ci.org/Terminux/exponent-server-sdk-go)
+[![codecov](https://codecov.io/gh/Terminux/exponent-server-sdk-go/branch/master/graph/badge.svg)](https://codecov.io/gh/Terminux/exponent-server-sdk-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Terminux/exponent-server-sdk-go)](https://goreportcard.com/report/github.com/Terminux/exponent-server-sdk-go)
 [![GoDoc](https://godoc.org/github.com/Terminux/exponent-server-sdk-go?status.svg)](https://godoc.org/github.com/Terminux/exponent-server-sdk-go)
 
