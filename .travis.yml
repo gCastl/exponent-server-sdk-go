@@ -1,0 +1,18 @@
+language: go
+
+go:
+    - 1.8.1
+    - master
+
+sudo: false
+
+install:
+    - go get github.com/jarcoal/httpmock
+    - go get github.com/Terminux/exponent-server-sdk-go
+    - cd $GOPATH/src/github.com/Terminux/exponent-server-sdk-go
+
+script:
+    - GOOS=darwin go build
+    - GOOS=windows go build
+    - GOOS=linux go build
+    - go test
