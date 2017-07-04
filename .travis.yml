@@ -8,11 +8,13 @@ sudo: false
 
 install:
     - go get github.com/jarcoal/httpmock
-    - go get github.com/Terminux/exponent-server-sdk-go
-    - cd $GOPATH/src/github.com/Terminux/exponent-server-sdk-go
+    - go get -t -v ./...
 
 script:
     - GOOS=darwin go build
     - GOOS=windows go build
     - GOOS=linux go build
-    - go test
+    - go test -coverprofile=coverage.txt -covermode=atomic
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash) -t 9111d431-4dac-4f61-883d-84462d5aec08
