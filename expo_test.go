@@ -20,9 +20,9 @@ func TestIsExpoPushToken(t *testing.T) {
 
 func TestChunkPushNotifications(t *testing.T) {
 	messages := []*PushMessage{
-		&PushMessage{To: "token"},
-		&PushMessage{To: "token"},
-		&PushMessage{To: "token"},
+		{To: "token"},
+		{To: "token"},
+		{To: "token"},
 	}
 
 	chunks := ChunkPushNotifications(messages)
