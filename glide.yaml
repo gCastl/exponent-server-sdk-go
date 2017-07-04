@@ -1,0 +1,3 @@
+package: github.com/Terminux/exponent-server-sdk-go
+import:
+- package: github.com/jarcoal/httpmock
