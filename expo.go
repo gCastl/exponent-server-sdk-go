@@ -94,17 +94,21 @@ func SendPushNotification(message *PushMessage) (*PushNotificationResponse, erro
 	return message.Send()
 }
 
+func isError(err error) bool {
+	return err != nil
+}
+
 func gZipBody(body []byte) ([]byte, error) {
 	var b bytes.Buffer
 	w := zlib.NewWriter(&b)
 
 	_, err := w.Write(body)
-	if err != nil {
+	if isError(err) {
 		return nil, err
 	}
 
 	err = w.Close()
-	if err != nil {
+	if isError(err) {
 		return nil, err
 	}
 
@@ -118,13 +122,13 @@ func SendPushNotifications(messages []*PushMessage) (*PushNotificationResponse, 
 	var isGzip bool
 
 	body, err := json.Marshal(messages)
-	if err != nil {
+	if isError(err) {
 		return nil, err
 	}
 
 	if len(body) > MaxBodySizeWithoutGzip {
 		body, err = gZipBody(body)
-		if err != nil {
+		if isError(err) {
 			return nil, err
 		}
 
@@ -132,7 +136,7 @@ func SendPushNotifications(messages []*PushMessage) (*PushNotificationResponse, 
 	}
 
 	req, err := http.NewRequest("POST", baseAPIURL+"/push/send", bytes.NewBuffer(body))
-	if err != nil {
+	if isError(err) {
 		return nil, err
 	}
 
@@ -147,14 +151,10 @@ func SendPushNotifications(messages []*PushMessage) (*PushNotificationResponse, 
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	if err != nil {
+	if isError(err) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode == 404 {
-		return nil, nil
-	}
 
 	result, _ := ioutil.ReadAll(resp.Body)
 
@@ -167,12 +167,8 @@ func SendPushNotifications(messages []*PushMessage) (*PushNotificationResponse, 
 // The chunks size is determined with the ChunkLimit variable
 func ChunkPushNotifications(messages []*PushMessage) [][]*PushMessage {
 	size := 1
-	lenMessage := len(messages)
-	if lenMessage >= ChunkLimit {
-		lenMessageFloat := float64(lenMessage)
-		chunkLimitFloat := float64(ChunkLimit)
-		ceilSize := math.Ceil(lenMessageFloat / chunkLimitFloat)
-		size = int(ceilSize)
+	if len(messages) >= ChunkLimit {
+		size = int(math.Ceil(float64(len(messages)) / float64(ChunkLimit)))
 	}
 
 	Chunks := make([][]*PushMessage, size)
