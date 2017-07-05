@@ -98,45 +98,43 @@ func isError(err error) bool {
 	return err != nil
 }
 
-func gZipBody(body []byte) ([]byte, error) {
+func gZipBody(body []byte) ([]byte, bool, error) {
+	var err error
 	var b bytes.Buffer
+
 	w := zlib.NewWriter(&b)
 
-	_, err := w.Write(body)
-	if isError(err) {
-		return nil, err
+	if _, err = w.Write(body); isError(err) {
+		return nil, false, err
 	}
 
-	err = w.Close()
-	if isError(err) {
-		return nil, err
+	if err = w.Close(); isError(err) {
+		return nil, false, err
 	}
 
-	body = b.Bytes()
-	return body, nil
+	return b.Bytes(), true, nil
 }
 
 // SendPushNotifications allows to send several messages at the same times
 // Is highly recommanded to not send more than 100 messages at once
 func SendPushNotifications(messages []*PushMessage) (*PushNotificationResponse, error) {
-	var isGzip bool
+	var err error
+	var body []byte
+	var gzipped bool
 
-	body, err := json.Marshal(messages)
-	if isError(err) {
+	if body, err = json.Marshal(messages); isError(err) {
 		return nil, err
 	}
 
 	if len(body) > MaxBodySizeWithoutGzip {
-		body, err = gZipBody(body)
-		if isError(err) {
+		if body, gzipped, err = gZipBody(body); isError(err) {
 			return nil, err
 		}
-
-		isGzip = true
 	}
 
-	req, err := http.NewRequest("POST", baseAPIURL+"/push/send", bytes.NewBuffer(body))
-	if isError(err) {
+	var req *http.Request
+
+	if req, err = http.NewRequest("POST", baseAPIURL+"/push/send", bytes.NewBuffer(body)); isError(err) {
 		return nil, err
 	}
 
@@ -145,20 +143,21 @@ func SendPushNotifications(messages []*PushMessage) (*PushNotificationResponse, 
 	req.Header.Set("User-Agent", "exponent-server-sdk-node/"+version)
 	req.Header.Set("Content-Type", "application/json")
 
-	if isGzip {
+	if gzipped {
 		req.Header.Set("Content-Encoding", "gzip")
 	}
 
+	var resp *http.Response
+
 	client := &http.Client{}
-	resp, err := client.Do(req)
-	if isError(err) {
+	if resp, err = client.Do(req); isError(err) {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	result, _ := ioutil.ReadAll(resp.Body)
-
 	var response PushNotificationResponse
+
+	result, _ := ioutil.ReadAll(resp.Body)
 	err = json.Unmarshal(result, &response)
 	return &response, err
 }
