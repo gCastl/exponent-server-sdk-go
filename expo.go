@@ -107,12 +107,12 @@ func gZipBody(body []byte) ([]byte, bool, error) {
 	var b bytes.Buffer
 
 	w := zlib.NewWriter(&b)
-	defer w.Close()
 
 	if _, err = w.Write(body); isError(err) {
 		return nil, false, err
 	}
 
+	w.Close()
 	return b.Bytes(), true, nil
 }
 
