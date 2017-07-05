@@ -94,6 +94,24 @@ func SendPushNotification(message *PushMessage) (*PushNotificationResponse, erro
 	return message.Send()
 }
 
+func gZipBody(body []byte) ([]byte, error) {
+	var b bytes.Buffer
+	w := zlib.NewWriter(&b)
+
+	_, err := w.Write(body)
+	if err != nil {
+		return nil, err
+	}
+
+	err = w.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	body = b.Bytes()
+	return body, nil
+}
+
 // SendPushNotifications allows to send several messages at the same times
 // Is highly recommanded to not send more than 100 messages at once
 func SendPushNotifications(messages []*PushMessage) (*PushNotificationResponse, error) {
@@ -105,20 +123,11 @@ func SendPushNotifications(messages []*PushMessage) (*PushNotificationResponse, 
 	}
 
 	if len(body) > MaxBodySizeWithoutGzip {
-		var b bytes.Buffer
-		w := zlib.NewWriter(&b)
-
-		_, err := w.Write(body)
+		body, err = gZipBody(body)
 		if err != nil {
 			return nil, err
 		}
 
-		err = w.Close()
-		if err != nil {
-			return nil, err
-		}
-
-		body = b.Bytes()
 		isGzip = true
 	}
 
@@ -158,8 +167,12 @@ func SendPushNotifications(messages []*PushMessage) (*PushNotificationResponse, 
 // The chunks size is determined with the ChunkLimit variable
 func ChunkPushNotifications(messages []*PushMessage) [][]*PushMessage {
 	size := 1
-	if len(messages) >= ChunkLimit {
-		size = int(math.Ceil(float64(len(messages)) / float64(ChunkLimit)))
+	lenMessage := len(messages)
+	if lenMessage >= ChunkLimit {
+		lenMessageFloat := float64(lenMessage)
+		chunkLimitFloat := float64(ChunkLimit)
+		ceilSize := math.Ceil(lenMessageFloat / chunkLimitFloat)
+		size = int(ceilSize)
 	}
 
 	Chunks := make([][]*PushMessage, size)
