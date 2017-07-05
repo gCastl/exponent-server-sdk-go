@@ -94,36 +94,45 @@ func SendPushNotification(message *PushMessage) (*PushNotificationResponse, erro
 	return message.Send()
 }
 
+func isError(err error) bool {
+	return err != nil
+}
+
+func gZipBody(body []byte) ([]byte, bool, error) {
+	if len(body) < MaxBodySizeWithoutGzip {
+		return body, false, nil
+	}
+
+	var err error
+	var b bytes.Buffer
+
+	w := zlib.NewWriter(&b)
+
+	if _, err = w.Write(body); isError(err) {
+		return nil, false, err
+	}
+
+	w.Close()
+	return b.Bytes(), true, nil
+}
+
 // SendPushNotifications allows to send several messages at the same times
 // Is highly recommanded to not send more than 100 messages at once
-func SendPushNotifications(messages []*PushMessage) (*PushNotificationResponse, error) {
-	var isGzip bool
+func SendPushNotifications(messages []*PushMessage) (response *PushNotificationResponse, err error) {
+	var body []byte
+	var gzipped bool
 
-	body, err := json.Marshal(messages)
-	if err != nil {
+	if body, err = json.Marshal(messages); isError(err) {
 		return nil, err
 	}
 
-	if len(body) > MaxBodySizeWithoutGzip {
-		var b bytes.Buffer
-		w := zlib.NewWriter(&b)
-
-		_, err := w.Write(body)
-		if err != nil {
-			return nil, err
-		}
-
-		err = w.Close()
-		if err != nil {
-			return nil, err
-		}
-
-		body = b.Bytes()
-		isGzip = true
+	if body, gzipped, err = gZipBody(body); isError(err) {
+		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", baseAPIURL+"/push/send", bytes.NewBuffer(body))
-	if err != nil {
+	var req *http.Request
+
+	if req, err = http.NewRequest("POST", baseAPIURL+"/push/send", bytes.NewBuffer(body)); isError(err) {
 		return nil, err
 	}
 
@@ -132,26 +141,21 @@ func SendPushNotifications(messages []*PushMessage) (*PushNotificationResponse, 
 	req.Header.Set("User-Agent", "exponent-server-sdk-node/"+version)
 	req.Header.Set("Content-Type", "application/json")
 
-	if isGzip {
+	if gzipped {
 		req.Header.Set("Content-Encoding", "gzip")
 	}
 
+	var resp *http.Response
+
 	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
+	if resp, err = client.Do(req); isError(err) {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 404 {
-		return nil, nil
-	}
-
 	result, _ := ioutil.ReadAll(resp.Body)
-
-	var response PushNotificationResponse
 	err = json.Unmarshal(result, &response)
-	return &response, err
+	return response, err
 }
 
 // ChunkPushNotifications returns an array of chunks
