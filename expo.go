@@ -99,16 +99,17 @@ func isError(err error) bool {
 }
 
 func gZipBody(body []byte) ([]byte, bool, error) {
+	if len(body) < MaxBodySizeWithoutGzip {
+		return body, false, nil
+	}
+
 	var err error
 	var b bytes.Buffer
 
 	w := zlib.NewWriter(&b)
+	defer w.Close()
 
 	if _, err = w.Write(body); isError(err) {
-		return nil, false, err
-	}
-
-	if err = w.Close(); isError(err) {
 		return nil, false, err
 	}
 
@@ -117,8 +118,7 @@ func gZipBody(body []byte) ([]byte, bool, error) {
 
 // SendPushNotifications allows to send several messages at the same times
 // Is highly recommanded to not send more than 100 messages at once
-func SendPushNotifications(messages []*PushMessage) (*PushNotificationResponse, error) {
-	var err error
+func SendPushNotifications(messages []*PushMessage) (response *PushNotificationResponse, err error) {
 	var body []byte
 	var gzipped bool
 
@@ -126,10 +126,8 @@ func SendPushNotifications(messages []*PushMessage) (*PushNotificationResponse, 
 		return nil, err
 	}
 
-	if len(body) > MaxBodySizeWithoutGzip {
-		if body, gzipped, err = gZipBody(body); isError(err) {
-			return nil, err
-		}
+	if body, gzipped, err = gZipBody(body); isError(err) {
+		return nil, err
 	}
 
 	var req *http.Request
@@ -155,11 +153,9 @@ func SendPushNotifications(messages []*PushMessage) (*PushNotificationResponse, 
 	}
 	defer resp.Body.Close()
 
-	var response PushNotificationResponse
-
 	result, _ := ioutil.ReadAll(resp.Body)
 	err = json.Unmarshal(result, &response)
-	return &response, err
+	return response, err
 }
 
 // ChunkPushNotifications returns an array of chunks
