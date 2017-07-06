@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/json"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"math"
 	"net/http"
@@ -31,19 +33,17 @@ type PushNotificationResult struct {
 	} `json:"details"`
 }
 
-// PushNotificationResultError is the result error returned by the Expo api
-type PushNotificationResultError struct {
+// PushNotificationError is the result error returned by the Expo api
+type PushNotificationError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 	Details string `json:"details"`
 	Stack   string `json:"stack"`
 }
 
-// PushNotificationResponse is the response return by the Expo api
-// The response is composed of PushNotificationResult or PushNotificationResultError
-type PushNotificationResponse struct {
-	Errors []PushNotificationResultError `json:"errors"`
-	Data   []PushNotificationResult      `json:"data"`
+type pushNotificationResponse struct {
+	Errors []*PushNotificationError  `json:"errors"`
+	Data   []*PushNotificationResult `json:"data"`
 }
 
 // PushMessage is the message sended to the Expo api
@@ -80,8 +80,21 @@ type PushMessage struct {
 }
 
 // Send allows to send the current message
-func (p *PushMessage) Send() (*PushNotificationResponse, error) {
-	return SendPushNotifications([]*PushMessage{p})
+func (p *PushMessage) Send() (r *PushNotificationResult, e *PushNotificationError, err error) {
+	res, resErr, err := SendPushNotifications([]*PushMessage{p})
+	if isError(err) {
+		return nil, nil, err
+	}
+
+	if len(res) == 1 {
+		r = res[0]
+	}
+
+	if len(resErr) == 1 {
+		e = resErr[0]
+	}
+
+	return r, e, nil
 }
 
 // IsExpoPushToken determines if the token is a Expo push token
@@ -90,7 +103,7 @@ func IsExpoPushToken(token string) bool {
 }
 
 // SendPushNotification allows to send the message
-func SendPushNotification(message *PushMessage) (*PushNotificationResponse, error) {
+func SendPushNotification(message *PushMessage) (*PushNotificationResult, *PushNotificationError, error) {
 	return message.Send()
 }
 
@@ -116,24 +129,36 @@ func gZipBody(body []byte) ([]byte, bool, error) {
 	return b.Bytes(), true, nil
 }
 
+func processResponse(body io.ReadCloser) (r []*PushNotificationResult, e []*PushNotificationError, err error) {
+	var response pushNotificationResponse
+
+	result, _ := ioutil.ReadAll(body)
+	fmt.Println(string(result))
+	if err = json.Unmarshal(result, &response); isError(err) {
+		return nil, nil, err
+	}
+
+	return response.Data, response.Errors, nil
+}
+
 // SendPushNotifications allows to send several messages at the same times
 // Is highly recommanded to not send more than 100 messages at once
-func SendPushNotifications(messages []*PushMessage) (response *PushNotificationResponse, err error) {
+func SendPushNotifications(messages []*PushMessage) (r []*PushNotificationResult, e []*PushNotificationError, err error) {
 	var body []byte
 	var gzipped bool
 
 	if body, err = json.Marshal(messages); isError(err) {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if body, gzipped, err = gZipBody(body); isError(err) {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var req *http.Request
 
 	if req, err = http.NewRequest("POST", baseAPIURL+"/push/send", bytes.NewBuffer(body)); isError(err) {
-		return nil, err
+		return nil, nil, err
 	}
 
 	req.Header.Set("Accept", "application/json")
@@ -149,13 +174,11 @@ func SendPushNotifications(messages []*PushMessage) (response *PushNotificationR
 
 	client := &http.Client{}
 	if resp, err = client.Do(req); isError(err) {
-		return nil, err
+		return nil, nil, err
 	}
 	defer resp.Body.Close()
 
-	result, _ := ioutil.ReadAll(resp.Body)
-	err = json.Unmarshal(result, &response)
-	return response, err
+	return processResponse(resp.Body)
 }
 
 // ChunkPushNotifications returns an array of chunks

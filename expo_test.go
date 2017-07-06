@@ -57,9 +57,14 @@ func TestSendPushNotification(t *testing.T) {
 	httpmock.RegisterResponder("POST", baseAPIURL+"/push/send",
 		httpmock.NewStringResponder(200, status200))
 
-	api, _ := message.Send()
-	if api.Data[0].Status != "ok" {
-		t.Errorf("SendPushNotification returned unexpected response: status got %s want ok", api.Data[0].Status)
+	apiRes, _, _ := message.Send()
+	if apiRes.Status != "ok" {
+		t.Errorf("SendPushNotification returned unexpected response: status got %s want ok", apiRes.Status)
+	}
+
+	apiRes, _, _ = SendPushNotification(&message)
+	if apiRes.Status != "ok" {
+		t.Errorf("SendPushNotification returned unexpected response: status got %s want ok", apiRes.Status)
 	}
 }
 
@@ -80,9 +85,9 @@ func TestSendPushNotifications(t *testing.T) {
 	httpmock.RegisterResponder("POST", baseAPIURL+"/push/send",
 		httpmock.NewStringResponder(200, status200))
 
-	api, _ := SendPushNotifications([]*PushMessage{&m1, &m2})
-	if api.Data[0].Status != "ok" {
-		t.Errorf("SendPushNotifications returned unexpected response: status got %s want ok", api.Data[0].Status)
+	apiRes, _, _ := SendPushNotifications([]*PushMessage{&m1, &m2})
+	if apiRes[0].Status != "ok" {
+		t.Errorf("SendPushNotifications returned unexpected response: status got %s want ok", apiRes[0].Status)
 	}
 }
 
