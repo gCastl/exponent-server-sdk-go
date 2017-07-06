@@ -46,11 +46,16 @@ Split the chunk messages into several chunks messages
 ### Example
 Here's a sample showcasing many features of expo.
 ```go
-import "github.com/Terminux/exponent-server-sdk-go"
+import (
+  "fmt"
+  "os"
 
-const token = "EXPO_TOKEN"
+  "github.com/Terminux/exponent-server-sdk-go"
+)
 
 func main() {
+	token := os.Getenv("EXPO_TOKEN")
+
 	if expo.IsExpoPushToken(token) {
 		message := expo.PushMessage{
 			To:    token,
@@ -58,16 +63,20 @@ func main() {
 			Body:  "Notification content",
 			Data:  struct{ Value string }{"mydata"}}
 
-		api, err := message.Send()
+		apiRes, apiErr, err := message.Send()
 		if err != nil {
 			panic(err)
 		}
 
-		fmt.Println("api result:", api)
+		fmt.Println("apiRes:", apiRes)
+		fmt.Println("apiErr:", apiErr)
 	}
 }
 ```
-
+to run example
+```bash
+$ EXPO_TOKEN=your_expo_token go run main.go
+```
 ### Based on
 
   * https://github.com/expo/exponent-server-sdk-node
