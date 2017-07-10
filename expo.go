@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"math"
@@ -133,7 +132,6 @@ func processResponse(body io.ReadCloser) (r []*PushNotificationResult, e []*Push
 	var response pushNotificationResponse
 
 	result, _ := ioutil.ReadAll(body)
-	fmt.Println(string(result))
 	if err = json.Unmarshal(result, &response); isError(err) {
 		return nil, nil, err
 	}
